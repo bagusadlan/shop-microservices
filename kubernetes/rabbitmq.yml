@@ -1,0 +1,84 @@
+# Service untuk RabbitMQ
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-service  # Nama Service
+  labels:
+    app: rabbitmq  # Label yang membedakan Service ini
+spec:
+  ports:
+    - name: amqp  # Nama port AMQP
+      protocol: TCP
+      port: 5672
+      targetPort: 5672
+    - name: management  # Nama port untuk antarmuka manajemen
+      protocol: TCP
+      port: 15672
+      targetPort: 15672
+  selector:
+    app: rabbitmq  # Seleksi pod yang akan dilayani oleh Service ini
+
+---
+# Deployment untuk RabbitMQ
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-deployment  # Nama Deployment
+spec:
+  replicas: 1  # Satu replika Pod
+  selector:
+    matchLabels:
+      app: rabbitmq  # Seleksi pod yang akan di-manage oleh Deployment
+  template:
+    metadata:
+      labels:
+        app: rabbitmq  # Label untuk Pod yang dibuat oleh Deployment
+    spec:
+      containers:
+        - name: rabbitmq
+          image: "rabbitmq:3.11-management"  # Docker image RabbitMQ dengan antarmuka manajemen
+          ports:
+            - containerPort: 5672  # Port AMQP
+            - containerPort: 15672  # Port antarmuka manajemen
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              value: "guest"
+            - name: RABBITMQ_DEFAULT_PASS
+              value: "guest"
+          volumeMounts:
+            - name: rabbitmq-data
+              mountPath: /var/lib/rabbitmq  # Mount volume untuk menyimpan data RabbitMQ
+      volumes:
+        - name: rabbitmq-data # Nama volume yang akan digunakan
+          persistentVolumeClaim:
+            claimName: rabbitmq-pvc # Nama Persistent Volume Claim yang akan digunakan
+
+---
+# PersistentVolume untuk RabbitMQ
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: rabbitmq-pv  # Nama PersistentVolume
+spec:
+  capacity:
+    storage: 1Gi  # Kapasitas penyimpanan
+  accessModes:
+    - ReadWriteOnce  # Hanya satu mode akses
+  hostPath:
+    path: "/mnt/data/rabbitmq"  # Path pada host sebagai sumber penyimpanan
+
+---
+# PersistentVolumeClaim untuk RabbitMQ
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rabbitmq-pvc  # Nama PersistentVolumeClaim
+spec:
+  accessModes:
+    - ReadWriteOnce  # Hanya satu mode akses
+  resources:
+    requests:
+      storage: 1Gi  # Meminta kapasitas penyimpanan 1Gi
+  selector:
+    matchLabels:
+      app: rabbitmq  # Seleksi PersistentVolume dengan label "app: rabbitmq"

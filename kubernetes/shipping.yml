@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: shipping-service
+  labels:
+    app: shipping-service # Label yang digunakan untuk seleksi objek
+spec:
+  ports:
+    - port: 3001 # Port yang digunakan oleh Layanan
+  selector:
+    app: shipping-service # Seleksi pod yang akan dilayani oleh layanan ini
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shipping-deployment
+  labels:
+    app: shipping-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shipping-deployment
+  template:
+    metadata:
+      labels:
+        app: shipping-deployment
+    spec:
+      containers:
+        - name: shipping
+          image: ghcr.io/bagusadlan/shipping-service:latest # Nama Docker image dari GitHub Container Registry
+          ports:
+            - containerPort: 3001 # Port yang digunakan oleh kontainer
+          env:
+            - name: AMQP_URL # Tambah variabel
+              value: 'amqp://rabbitmq:5672'
